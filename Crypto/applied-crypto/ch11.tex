@@ -1,3 +1,224 @@
 \chapter{Notes on Ch. 11}
 
+In this chapter, the basic problem of encryption is considered, consider that Alice wants to send Bob an 
+encrypted email message, even if they don't share a secret key. This in fact can be done via public key encryption. 
 
+Public Key encryption is used in many settings, highlighted below are two of them: 
+
+\begin{enumerate}
+    \item \textbf{Sharing Encrypted Files}
+    How it works: Alice encrypts a file \(f\) with a random key \(k\) using a symmetric cipher. The resulting cipher text \(c_f\) is stored on the file system. Suppose Alice wants to grant Bob access to the contents of \(f\), she encrypts \(k\) under Bob's public \(\pk_b\)  by computing \(c_B \sample E(\pk_B, k)\). \(c_B\) is then stored near \(c_f\) as part of the meta data. Now when Bob wants to read \(f\) he decrypts \(C_B\) using his secret key \(\sk_B\) to obtain \(k\), then decrypt \(c_f\) using \(k\) to obtain \(f\). This scheme could be easily extended to other uses, only a single copy of \(f\) needs to be stored, and just the seperate metadata is needed. 
+    \item \textbf{Key Escrow}
+    Consider a company who wants to be able to open a employees encrypted file when they are unable to provide the code themselves, if the company was using a key escrow this could be done. In this case the company runs a key escrow server where at setup the key escrow server generates a secret key \(\sk_{ES} \) and a corresponding \(\pk_{ES} \). It keeps the secret key to itself and makes the public key available to all employees. When Alice (an employee) then encrypts a file using a random symmetric key \(k\) she also encrypts \(k\) under \(\pk_{ES}\) and stores the ciphertext \(C_{ES}\) in the meta data section. All files are encrypted this way. Therefore if a manager needs to access some work and Alice is not reachable they could send \(c_{ES}\) to the escrow service, the server would decrypted \(C_{ES}\) to obtain \(k\) and send \(k\) to the manager. This could then be used to decrypt \(c_f\)  and obtain \(f\). 
+\end{enumerate}
+
+\section{\textbf{Basic Definitions}}
+
+A public key encryption scheme \(\mathcal{E}  = (G,E,D)\) is a triple of efficient algorithms; a key generated \(G\) an encryption algorithm \(E\) and a decryption algorithm \(D\). 
+\begin{enumerate}
+    \item G is a probalistic algorithm that is invoked as \( (\pk, \sk) \sample G()\) where \(\pk\) is the public key and \(\sk\) is the secret key. 
+    \item E is a probalistic algorithm that is invoked as \(c \sample E(\pk, m)\)  where \(\pk\) is the public key,\(m\) is the message, and \(c\) is the cipher tex.      
+    \item D is a deterministic algorithm that is invoked as \(m \gets D(\sk, c)\) where \(\sk\) is the secret key, \(c\) is the cipher tex and \(m\) is the message 
+    \item We require that decryption undoes encryption specifically that for all possible outputs \(\pk, \sk\) of \(G\) and all messages that 
+    \[
+        \Pr[D(\sk, E(\pk, m)) = m] = 1
+    \]    
+    
+\end{enumerate}    
+
+Note: Messages are assumed to lie in some finite message space \(\mathcal{C}\) and ciphertex in some ciphertext space \(\mathcal{C}\). We say that \(\mathcal{E} = (G, E,D)\) is defined over \((\mathcal{M}, \mathcal{C})\). 
+
+\begin{attackGame}(semantic security)
+    For a given public-key encryption scheme \(\mathcal{E} = (G,E,D)\) defined over \((\mathcal{M}, \mathcal{C})\)  and given adversary \(\adv\) we define two experiments: 
+    Experiment \(b\) \((b= 0,1)\):
+    
+    \begin{enumerate}
+        \item Challenger computes \((\pk, \sk) \sample G()\) and sends \(\pk\) to adversary
+        \item Adversary computes \(m_0, m_1 \in \mathcal{M}\) of the same length and sends them to the challenger. 
+        \item Challenger computes \(c \sample E(\pk m_b)\) and sends \(c\) to adversary. 
+        The adversasry outputs a bit \(b \in \{0, 1\}\).       
+    \end{enumerate}
+    \label{AG::SS}
+\end{attackGame}
+
+\begin{figure}[htbp]
+    \centering
+    \pseudocode{%
+\textbf{Challenger} \<\< \textbf{Adversary} \\[][\hline]
+(\text{Experiment } b)  \< \< \\ 
+(\pk, \sk) \sample G() \< \< \\ 
+\< \sendmessageright*{\pk} \< \\ 
+\< \sendmessageleft*{m_0, m_1 \in \mathcal{M}} \< \\ 
+c \sample E(\pk, m_b) \< \< \\
+\< \sendmessageright*{c} \< \\
+\< \sendmessageleft*{\hat{b} \in \{0, 1\}} \< \\
+} 
+\caption{Experiment game of Attack Game \ref{AG::SS}} 
+\end{figure}
+
+If \(W_b\) is the event that \(\adv\) outputs \(1\) we define \(\adv\)'s advatange is \(\advantage{SS}{\adv, \mathcal{E} } \coloneqq  |\prob{W_0} - \prob{W_1}|\) 
+
+\begin{definition}
+    A public key encryption scheme \(\mathcal{E}\) is semantically secure if for all efficent adversaries \(\adv\), \( \advantage{SS}{\adv, \mathcal{E}} = \negl\)   
+\end{definition}
+
+Let us now note one property of any semantically secure public-key scheme that it uses a randomized encryption algorithm.  If it did not use a form of randomized encryption for the attack game \ref{AG::SS} we could have the adversary \(\adv\) simply run the encryption themselves \(E(\pk, m_0)\) on one of their messages, they could then compare this message to the cipher text provided by the adversary, they could then determine if they match and break \(\ref{AG::SS}\). Therefore we see that such encryption algorithms CANNOT be deterministic.  
+
+\subsection{CPA Security}
+
+CPA security of Semantic Security against chosen plaintext attack are two distinct notions of security that can first looked at in the lens of symmetric ciphers, more so they can be looked at in the lens of public key encryption. In the case of symmetric ciphers we see that semantic security does not imply CPA however in the case of public key encryption Semantic security does in fact imply CPA security.  A simple reason for this is that in the public key setting adversaries can encrypt any messages they like without having to learning the secret key. This is because they have access to the public key. In the symmetric case this is not possible. 
+
+\begin{attackGame}(CPA Security)
+A public key encryption scheme \(\E\) is called a semantically secure against chosen plaintext against or (CPA Secure) if for all efficient adversaries \(\adv\) the value \(CPAadv[\adv \E] \) is negligible. 
+
+\end{attackGame}
+
+\begin{theorem}
+    If a public key encryption scheme \(\E\) is semantically secure then it is also CPA Secure. 
+\end{theorem}
+
+Proof Idea: \\ 
+Suppose that \(\E= (G,E,D) \) is defined over \((\M, \C)\) and let \(\adv\) be a CPA Adversary that plays the attack game \ref{AG::SS}  with respect to \(\E\). Suppose it makes atmost \(Q\) queries to its challenger. We can describe relevant hybrid games \(j=0,\ldots Q \) for hybrid game \(j\) it played between \(\adv\) and a challenger who works as follows: 
+\begin{enumerate}
+    \item \((\pk, \sk) \sample G()\)
+    \item Send \(\pk\) to \(\adv\). 
+    \item Upon receiving the \(i\)th query \((m_{i0}, m_{i1}) \in \M^{2} \) from \(\adv\) do the following: 
+    \begin{enumerate}
+        \item If \(i > j\): \(c_i \sample E(\pk, m_{i0})\)
+        \item Else \(c_i \sample E(\pk m_{i1})\)
+        \item Send \(c_i\) to \(\adv\).     
+    \end{enumerate}     
+\end{enumerate}     
+
+\subsection{Encryption Based on a trapdoor scheme}
+
+Our encryption scheme \(\E_{TDF}\) is built of several components. 
+\begin{enumerate}
+    \item A trapdoor function scheme \(T = (G,F,I)\) over \((\X,\Y)\)
+    \item A symmetric cipher \(\E_s = (E_s, D_s)\) over \((\K, \M, \C)\) 
+    \item A hash function \(H: \X \to \K\).    
+\end{enumerate} 
+
+The message space for \(\E_{TDF}\) is \( \M\) and the iphertext is \(\Y \times \C\) We now describe they key generation, encryption, and decryption algorithm for \(\E_{TDF}\). 
+
+The Key generation algorithm for \(\E_{tdf}\) is the key generating algorithm for \(T\). 
+
+For a given public key \(\pk\) and a given message \(m \in \M\) the encryption algorithm runs as follows: 
+    \[
+        E(\pk, m) \coloneqq  x \sample \X, y \sample F(pk, x), k \gets H(x), c \sample E_s(k, m): \text{output } (y, c)
+    \]
+
+    For a given secret key \(\sk\) and a given cipher text \((y,c)\) the decryption algorithm runs as follows: 
+    \[
+        D(\sk, (y, c)) \coloneqq  x \gets I(\sk, y), k \gets H(x), m \gets D_s(k, c): \text{output } m 
+    \]   
+
+\begin{remark}
+    As it can be seen above utilizing a hash function, a trapdoor function scheme and a symmetric cipher we can build a semantically secure public key encryption scheme. The trap door scheme is used in the encryption step to encrypt the public key along with some random value from \(\X\), this value can be inverted by the owner with the secret key to obtain \(x\) but is feasibly hard to determine \(x\) for a non-holder of \(\sk\), this \(x\) is hashed to obtained \(k\), which we encrypt using our symmetric cipher encryption function \(E_s\). Therefore we see to decrypt, the holder of the secret key calls the inverter function of \(T\) to obtain \(x\) from this, they take the hash of \(x\) to obtain \(k\), given \(k, c\) they can use the symmetric cipher decryption function to decrypt the message.            
+\end{remark}
+
+It can be proved that \(\E_{edf}\) is semantically secure utilizing the correctness property of \(T\) and if \(H\) is modeled as a random oracle, and \(E_{s}\) is semantically secure.  
+
+\subsection{Instantiating \(\E_{TDF}\) with RSA }
+
+Suppose we now use RSA to instantiate \(T\) in the above encryption scheme for \(\E_{TDF}\), the scheme is parameterized by \(l\) the length of prime factors of the RSA modulus, and the encryption exponent \(e\), which is a positive odd integer. 
+
+\(E_{RSA} = (G, E, D)\) with message space \(\M\) and ciphertext \(\X \times \C\) follows: 
+
+\begin{enumerate}
+    \item G() \(\coloneqq  (n, d) \sample RSAGEN(l, e), \pk \gets (n,e), \sk \gets (n,d)\) output \((\pk, \sk)\)
+    \item For a given public key \( \pk = (n, e)\) and message \(m \in \M\) the encryption algorithm runs as follows: 
+    \[
+         E(\pk, m) :+ x \sample \Z_n y \gets x^e k \gets H(x) c \sample E_s(k, m): \text{output}: (y, c)
+    \]    
+    \item For a secret key \(\sk = (n,d)\) and a cipher text \( (y, c)\) decryption runs as follows: 
+    \[
+        D(\sk, (y, c)) \coloneqq  x \gets y^d, k \gets h(x), m \gets D_s(k, c): \text{output} m
+    \]  
+\end{enumerate}
+
+\begin{theorem}
+    Assume that \(H: \X \to \K\) is modeled as a random oracle, if the RSA assumption holds for paramters \((l, e)\) and \(\E_s\) is semantically secure, then \(\E_{RSA}\) is semantically secure.     
+\end{theorem}
+
+\subsection{Oblivious Transfer based on Diffie-Hellman}
+
+The question being asked is if some provider such as a newspaper has articles \(m_1, \ldots  m_n \in \M \) and you are interested in reading an article \(i\), is it possible to download article \(m_i\) without the newspaper learning what article I downloaded. Besides the obvious, having the newspaper send all the articles and promising to pay for the ones you read, we could utilize oblivious transfers as a solution to this problem. This could be considered a \(\frac{1}{n}\) oblivious transfer or OT where the user learns a single item and the sender (newspaper) learns nothing about the specific \(i\) chosen just that only \(1\) was chosen. 
+
+It is important to note that OT protocols security can be quite subtle and extra caution should be considered when running OT concurrently. 
+
+\subsubsection{A secure OT from ElGamal Encryption}
+
+This protocol satifies basic security of OT security in the random security model, assuming only CDH. Let \(\M\) be the message space for the sender's message, and let \(\G\) be a cyclic group of prime order \(q\) with a generator \( g \in \G\). Suppose \(H\) is a hash function \(H: \G^{2} \to \K\) (modeled as a random oracle), and a semantically secure symmetric cipher \((E_s, D_s)\). Additionally suppose that communication is happening over a secure channel. 
+
+Let's now see how this system works: 
+
+\begin{itemize}
+    \item Sender choses \(\beta  \sample \Z_q\) and computes \( v \gets g^{\beta }\) and sends \(v\) to the receiver 
+    \item Receiver choses \(\alpha \sample \Z_q\), computes \(u \gets g^{\alpha }v^{-i}\) and sends \(u\) to the sender. 
+    \item For \(j=1,\ldots n \) the sender computes: 
+    \begin{enumerate}
+        \item \(u_j \gets u \cdot v^j\) (ElGamal Public Key)
+        \item \(w_j \gets u^{\beta }_j\) (Construct ElGamal Cipher Text)
+        \item \(k_j \gets H(v, w_j)\)  (Use randomness \(\beta \) and public key \(u_j\)  )
+        \item \(c_j \sample E_s(k_j, m_k)\) encryption of \(m_j\)  
+    \end{enumerate}    
+    The sender than sends \(c_1, \ldots c_n \) to the receiver. Note that all \(n\) ElGamal ciphertexts are generated using the same encryption randomness.     
+    \item The receiver who has secret key \(\alpha \) for the ElGamal public key \(u_i = g^\alpha \) decrypts \(c_i\): 
+    \begin{enumerate}
+        \item Compute \(w \gets v^\alpha, k \gets H(v, w) \)
+        \item Output \(m \gets D_s(k, c_i)\)  
+    \end{enumerate}   
+\end{itemize}
+
+This works as follows: \(w = v^\alpha  = g^{\alpha \beta }\) and in the decryption stage the key is calculated as \(H(v, w)\). In the encryption stage by the sender we see that \(k_i \gets H(v, w_i)\) where 
+\[
+     w_i = u_i^\beta  = (uv^i)^\beta = ((g^\alpha v^{-i})v^i)^\beta = g^{\alpha \beta } 
+\]  
+therefore we can see that the keys are the same. Given the the receiver can only query \(H\) once for \(1, \ldots  n \) and that \(H\) is modeled as a random oracle it can be seen that the receiver can learn at most one message.
+
+\subsubsection{Adapative Oblivious Transfer}
+
+The OT protocol presented above while meeting the security needs fails in terms of performance, the newspaper has to rencrypt all the articles in the newspaper under new keys and fresh ciphertexts for each time Bob wants to use a seperate session. In most contexts this is simply to costly. A better system would allow the newspaper to encrypt all the articles once and post the encrypted articles on the web for anyone to download, and will open the article when Bob pays for one. This idea is known as an adaptive OT protocol.
+
+Let \(F\) be a secure PRF defined over \((\K, \X, \Y)\), suppose that one party, the sender, has the PRF key \(k \in K\), another party the receiver has an input \( x \in X\). An oblivious PRF protocol is a protocol that lets the receiver learn the output \(y = F(k, x)\) without learning anything else than the value of the PRF at any other input. \(F(k, \cdot)\) should be able to run over many inputs. nothing about any of the inputs should be learned. More specifcally, we say that \(F(k, \cdot)\) for \(l\) inputs the receiver cannot learn anything with the sender in \(l\) or fewer times. 
+
+We can design a Oblivious PRF defined as 
+\[
+    F^\prime(k, x) \coloneqq  H^\prime (x, H(x)^k) k \in \Z_q, x \in \X
+\] 
+where \(\G\) is a group of prime order \(q\) with generator \(g\). 
+
+We say that \(H: \X \to \G\) and that \(H^\prime  : \G \to \Y\) are hash functions modeled as random oracles. The key space is \(\K = \Z_q\). 
+
+Given our definition \(F^\prime \) let us now define a protocol OPRF1 for this. Suppose that the sender has a key \(k \in \Z_q\). In each run of the protocol the receiver has an input \( x \in \X\) and the sender and receiver interact (over a secure channel ) as follows: 
+\begin{enumerate}
+    \item The receiver chooses \(p \sample \Z_q - \{0\}\) and computes \(v \gets H(x)^p\) and sends \(v\) to the sender. 
+    \item Compute \(w \gets v^k \in \G\) and send \(w\) to the receiver. 
+    \item The receiver computes and outputs \(H^\prime (x, w^{\frac{1}{p}})\)      
+\end{enumerate}
+
+If the receiver and the sender are honest this last step comes downto: 
+\[
+     w^{\frac{1}{p}} = (v^k)^{\frac{1}{p}} = ((H(x)^p)^k)^{\frac{1}{p}} = H(x)^k
+\]
+
+We note that this is only partially secure in the prescence of a malicious sender. 
+
+\todo{Add Secure Version}
+\subsubsection{Adapative OT from an OPRF}
+
+We need the following: 
+\begin{enumerate}
+    \item PRF F defined over \(\K_{prf}, \{1,\ldots \}, \K \). 
+    \item A OPRF protocol for a PRF F, which is secure against a malicious sender
+    \item A symmetric cipher \((E_s, D_s)\) defined over \((\K, \M, \C)\) that provides one-time authenticated encryption. 
+\end{enumerate}
+
+The protocol works as follows: 
+
+\begin{itemize}
+    \item Sender begins by getting \(k \sample K_{prf}\), for \(i, \ldots n \) \(k_i \gets F(k,i)\), \(c_i \sample E_s(k_i, m_i)\) send \( C= (c_1 , \ldots c_n ) \) to the receiver. 
+    \item When the receiver wants \(m_i\) the receiver and send establish a secure channel between them and use the OPRF to compute \(F(k, i)\) the sender has \(k\) and the receiver has \(i \in \{1, \ldots n\} \) when done, the reeceiver has \(k_i\)
+    The receiver can then compute \(m_i \gets D_s(k_i, c_i)\)           
+\end{itemize}
